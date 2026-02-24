@@ -9,16 +9,7 @@ let currentLanguage = null;
    UTILS
 ========================= */
 
-let user = JSON.parse(localStorage.getItem("codelearn_user")) || {
-  name: "Developer",
-  xp: 120,
-  level: 3,
-  streak: 5,
-  todayXP: 30,
-  currentCourse: "Python",
-  currentLesson: "Условия",
-  avatar: "👨‍💻"
-};
+let user = null;
 
 
 
@@ -47,7 +38,7 @@ function renderHome() {
     <!-- Продолжить обучение -->
     <div class="card">
       <h3>🚀 Продолжить обучение</h3>
-      <p>${user.currentCourse} • ${user.currentLesson}</p>
+      <p>${user.current_course} • ${user.current_lesson}</p>
       <button class="primary-btn" id="continueBtn">Продолжить</button>
     </div>
 
@@ -64,8 +55,8 @@ function renderHome() {
     <div class="card">
       <h3>📈 Статистика дня</h3>
       <p>🔥 Стрик: ${user.streak} дней</p>
-      <p>⚡ XP сегодня: +${user.todayXP}</p>
-      <p>🎯 Челлендж выполнен: ${user.todayChallenge ? "Да" : "Нет"}</p>
+      <p>⚡ XP сегодня: +${user.today_xp}</p>
+      <p>🎯 Челлендж выполнен: —</p>
     </div>
   `;
 
@@ -111,7 +102,7 @@ function renderProfile() {
 
     <div class="profile-card">
       <label>Никнейм</label>
-      <input type="text" id="nameInput" value="${user.name}" />
+      <input type="text" id="nameInput" value="${user.username}" />
     </div>
 
     <div class="profile-card">
@@ -124,31 +115,86 @@ function renderProfile() {
     </div>
   `;
 
-  document.getElementById("saveProfile").addEventListener("click", () => {
-    const newName = document.getElementById("nameInput").value;
-    const avatarFile = document.getElementById("avatarInput").files[0];
+document.getElementById("saveProfile").addEventListener("click", async () => {
+  const newName = document.getElementById("nameInput").value;
+  const avatarFile = document.getElementById("avatarInput").files[0];
 
-    if (newName.trim() !== "") {
-      user.name = newName;
-    }
+  let updatedUser = { ...user };
 
-    if (avatarFile) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        user.avatar = e.target.result;
-        saveUser();
-      };
-      reader.readAsDataURL(avatarFile);
-    } else {
-      saveUser();
-    }
-  });
+  if (newName.trim() !== "") {
+    updatedUser.username = newName;
+  }
+
+  if (avatarFile) {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      updatedUser.avatar = e.target.result;
+      await saveUser(updatedUser);
+    };
+    reader.readAsDataURL(avatarFile);
+  } else {
+    await saveUser(updatedUser);
+  }
+});
 }
 
-function saveUser() {
-  localStorage.setItem("codelearn_user", JSON.stringify(user));
-  updateHeader();
-  alert("Профиль сохранён ✅");
+async function loadUser() {
+  const telegramID = window.TELEGRAM_USER_ID;
+
+  if (!telegramID) {
+    alert("Нет Telegram ID");
+    return null;
+  }
+
+  const { data } = await supabaseClient
+    .from("users")
+    .select("*")
+    .eq("telegram_id", telegramID)
+    .maybeSingle(); // ← ВАЖНО
+
+  if (data) return data;
+
+  const newUser = {
+    telegram_id: telegramID,
+    username: "Developer",
+    xp: 0,
+    level: 1,
+    streak: 0,
+    today_xp: 0,
+    current_course: "Python",
+    current_lesson: "Введение",
+    avatar: "👨‍💻"
+  };
+
+  await supabaseClient.from("users").insert([newUser]);
+  return newUser;
+}
+
+async function saveUser(updatedUser) {
+
+const { data: existing } = await supabaseClient
+  .from("users")
+  .select("telegram_id")
+  .eq("username", updatedUser.username)
+  .maybeSingle();
+
+  if (existing && existing.telegram_id !== updatedUser.telegram_id) {
+    alert("Ник уже занят ❌");
+    return;
+  }
+
+  const { error } = await supabaseClient
+    .from("users")
+    .update(updatedUser)
+    .eq("telegram_id", updatedUser.telegram_id);
+
+  if (error) {
+    alert("Ошибка сохранения");
+  } else {
+    user = updatedUser;
+    updateHeader();
+    alert("Профиль сохранён ✅");
+  }
 }
 
 function xpToNextLevel() {
@@ -160,17 +206,24 @@ function currentLevelProgress() {
 }
 
 function updateHeader() {
-  document.querySelector(".username").innerText = `Привет, ${user.name}`;
-  document.querySelector(".level").innerText = `Level ${user.level} • ${user.xp} XP`;
+  if (!user) return;
+
+  document.querySelector(".username").innerText =
+    `Привет, ${user.username}`;
+
+  document.querySelector(".level").innerText =
+    `Level ${user.level} • ${user.xp} XP`;
 
   const avatar = document.querySelector(".avatar");
 
-  if (user.avatar.startsWith("data:image")) {
-    avatar.innerHTML = `<img src="${user.avatar}" style="width:100%;height:100%;border-radius:50%;">`;
+  if (user.avatar && user.avatar.startsWith("data:image")) {
+    avatar.innerHTML =
+      `<img src="${user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
   } else {
-    avatar.innerText = user.avatar;
+    avatar.innerText = user.avatar || "👨‍💻";
   }
 }
+
 /* =========================
    LANGUAGE MENU
 ========================= */
@@ -259,6 +312,11 @@ themeToggle.addEventListener("click", () => {
    INIT
 ========================= */
 
-render("home");
-navButtons[0].classList.add("active");
-updateHeader();
+(async () => {
+  user = await loadUser();
+  if (!user) return;
+
+  updateHeader();
+  render("home");
+  navButtons[0].classList.add("active");
+})();
