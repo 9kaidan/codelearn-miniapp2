@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>CodeLearn</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="topbar">
+    <div class="profile">
+      <div class="avatar">👨‍💻</div>
+      <div>
+        <div class="username">Привет, Developer</div>
+        <div class="level">Level 3 • 120 XP</div>
+      </div>
+    </div>
+    <button id="themeToggle" class="icon-btn">🌙</button>
+  </header>
+
+  <!-- ДИНАМИЧЕСКИЙ КОНТЕНТ -->
+  <main id="content" class="fade"></main>
+
+  <!-- НИЖНЯЯ НАВИГАЦИЯ -->
+  <nav class="bottom-nav">
+    <button data-page="home">🏠</button>
+    <button data-page="learn">📚</button>
+    <button data-page="progress">📊</button>
+    <button data-page="profile">👤</button>
+  </nav>
+
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

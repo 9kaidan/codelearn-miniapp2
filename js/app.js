@@ -1,0 +1,264 @@
+const content = document.getElementById("content");
+const navButtons = document.querySelectorAll(".bottom-nav button");
+const themeToggle = document.getElementById("themeToggle");
+
+let currentPage = "home";
+let currentLanguage = null;
+
+/* =========================
+   UTILS
+========================= */
+
+let user = JSON.parse(localStorage.getItem("codelearn_user")) || {
+  name: "Developer",
+  xp: 120,
+  level: 3,
+  streak: 5,
+  todayXP: 30,
+  currentCourse: "Python",
+  currentLesson: "Условия",
+  avatar: "👨‍💻"
+};
+
+
+
+function setActive(btn) {
+  navButtons.forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+function animatePage() {
+  content.classList.remove("fade");
+  void content.offsetWidth;
+  content.classList.add("fade");
+}
+
+/* =========================
+   PAGES
+========================= */
+
+function renderHome() {
+  const progressPercent = Math.min(100, (user.xp / 200) * 100); // пример прогресса
+  const remainingXP = 200 - (user.xp % 200);
+
+  content.innerHTML = `
+    <h2>Главная</h2>
+
+    <!-- Продолжить обучение -->
+    <div class="card">
+      <h3>🚀 Продолжить обучение</h3>
+      <p>${user.currentCourse} • ${user.currentLesson}</p>
+      <button class="primary-btn" id="continueBtn">Продолжить</button>
+    </div>
+
+    <!-- XP / Level -->
+    <div class="card">
+      <h3>📊 Уровень ${user.level}</h3>
+      <p>До следующего уровня осталось ${remainingXP} XP</p>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0;"></div>
+      </div>
+    </div>
+
+    <!-- Статистика дня -->
+    <div class="card">
+      <h3>📈 Статистика дня</h3>
+      <p>🔥 Стрик: ${user.streak} дней</p>
+      <p>⚡ XP сегодня: +${user.todayXP}</p>
+      <p>🎯 Челлендж выполнен: ${user.todayChallenge ? "Да" : "Нет"}</p>
+    </div>
+  `;
+
+  // Анимация прогресса
+  setTimeout(() => {
+    document.getElementById("progressFill").style.width = `${progressPercent}%`;
+  }, 100);
+
+  // Событие кнопки продолжения обучения
+  document.getElementById("continueBtn").addEventListener("click", () => {
+    renderLanguageMenu();
+  });
+}
+
+function renderLearn() {
+  content.innerHTML = `
+    <h2>Выбери язык</h2>
+    <div class="language-card" data-lang="python">🐍 Python</div>
+    <div class="language-card" data-lang="cpp">💙 C++</div>
+    <div class="language-card" data-lang="csharp">🎯 C#</div>
+    <div class="language-card" data-lang="dart">🟣 Dart</div>
+  `;
+
+  document.querySelectorAll(".language-card").forEach(card => {
+    card.addEventListener("click", () => {
+      currentLanguage = card.dataset.lang;
+      renderLanguageMenu();
+    });
+  });
+}
+
+function renderProgress() {
+  content.innerHTML = `
+    <h2>Твой прогресс</h2>
+    <div class="card">Python — 65%</div>
+    <div class="card">C++ — 20%</div>
+  `;
+}
+
+function renderProfile() {
+  content.innerHTML = `
+    <h2>Редактор профиля</h2>
+
+    <div class="profile-card">
+      <label>Никнейм</label>
+      <input type="text" id="nameInput" value="${user.name}" />
+    </div>
+
+    <div class="profile-card">
+      <label>Выбрать аватар</label>
+      <input type="file" id="avatarInput" accept="image/*" />
+    </div>
+
+    <div class="profile-card">
+      <button id="saveProfile" class="primary-btn">Сохранить изменения</button>
+    </div>
+  `;
+
+  document.getElementById("saveProfile").addEventListener("click", () => {
+    const newName = document.getElementById("nameInput").value;
+    const avatarFile = document.getElementById("avatarInput").files[0];
+
+    if (newName.trim() !== "") {
+      user.name = newName;
+    }
+
+    if (avatarFile) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        user.avatar = e.target.result;
+        saveUser();
+      };
+      reader.readAsDataURL(avatarFile);
+    } else {
+      saveUser();
+    }
+  });
+}
+
+function saveUser() {
+  localStorage.setItem("codelearn_user", JSON.stringify(user));
+  updateHeader();
+  alert("Профиль сохранён ✅");
+}
+
+function xpToNextLevel() {
+  return user.level * 100;
+}
+
+function currentLevelProgress() {
+  return (user.xp % xpToNextLevel()) / xpToNextLevel() * 100;
+}
+
+function updateHeader() {
+  document.querySelector(".username").innerText = `Привет, ${user.name}`;
+  document.querySelector(".level").innerText = `Level ${user.level} • ${user.xp} XP`;
+
+  const avatar = document.querySelector(".avatar");
+
+  if (user.avatar.startsWith("data:image")) {
+    avatar.innerHTML = `<img src="${user.avatar}" style="width:100%;height:100%;border-radius:50%;">`;
+  } else {
+    avatar.innerText = user.avatar;
+  }
+}
+/* =========================
+   LANGUAGE MENU
+========================= */
+
+function renderLanguageMenu() {
+  const langTitle = {
+    python: "Python",
+    cpp: "C++",
+    csharp: "C#",
+    dart: "Dart"
+  };
+
+  content.innerHTML = `
+<button id="backBtn" class="back-btn">
+  ← Назад
+</button>
+
+    <div class="card" data-mode="theory">📘 Теория</div>
+    <div class="card" data-mode="quiz">🧠 Викторина</div>
+    <div class="card" data-mode="practice">💻 Практика</div>
+    <div class="card" data-mode="challenge">🏆 Челлендж</div>
+  `;
+
+  document.getElementById("backBtn").addEventListener("click", () => {
+    renderLearn();
+  });
+
+  document.querySelectorAll(".card[data-mode]").forEach(card => {
+    card.addEventListener("click", () => {
+      renderMode(card.dataset.mode);
+    });
+  });
+}
+
+/* =========================
+   MODE PAGES
+========================= */
+
+function renderMode(mode) {
+  content.innerHTML = `
+<button id="backBtn" class="back-btn">
+  ← Назад
+</button>
+    <div class="card">
+      Раздел "${mode}" для ${currentLanguage}
+      <br><br>
+      (Тут будет твоя логика JSON)
+    </div>
+  `;
+
+  document.getElementById("backBtn").addEventListener("click", () => {
+    renderLanguageMenu();
+  });
+}
+
+/* =========================
+   MAIN ROUTER
+========================= */
+
+function render(page) {
+  currentPage = page;
+  animatePage();
+
+  if (page === "home") renderHome();
+  if (page === "learn") renderLearn();
+  if (page === "progress") renderProgress();
+  if (page === "profile") renderProfile();
+}
+
+/* =========================
+   EVENTS
+========================= */
+
+navButtons.forEach(btn => {
+  btn.addEventListener("click", () => {
+    setActive(btn);
+    render(btn.dataset.page);
+  });
+});
+
+themeToggle.addEventListener("click", () => {
+  document.body.classList.toggle("light");
+});
+
+/* =========================
+   INIT
+========================= */
+
+render("home");
+navButtons[0].classList.add("active");
+updateHeader();
