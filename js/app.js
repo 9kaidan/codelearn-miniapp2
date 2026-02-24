@@ -141,23 +141,24 @@ function renderProfile() {
 
 async function loadUser() {
   const telegramID = window.TELEGRAM_USER_ID;
-
   if (!telegramID) {
     alert("Нет Telegram ID");
     return null;
   }
 
+  // Ищем пользователя в Supabase
   const { data } = await supabaseClient
     .from("users")
     .select("*")
     .eq("telegram_id", telegramID)
-    .maybeSingle(); // ← ВАЖНО
+    .maybeSingle();
 
-  if (data) return data;
+  if (data) return data; // найден — возвращаем
 
+  // Если не найден — создаём нового
   const newUser = {
     telegram_id: telegramID,
-    username: "Developer",
+    username: `User${telegramID}`, // можно придумать дефолтное имя
     xp: 0,
     level: 1,
     streak: 0,
@@ -167,12 +168,17 @@ async function loadUser() {
     avatar: "👨‍💻"
   };
 
-  await supabaseClient.from("users").insert([newUser]);
+  const { error } = await supabaseClient.from("users").insert([newUser]);
+  if (error) {
+    alert("Ошибка создания пользователя в базе");
+    return null;
+  }
+
   return newUser;
 }
 
 async function saveUser(updatedUser) {
-  // проверяем, не занят ли ник другим пользователем
+  // Проверка на уникальность ника
   const { data: existing } = await supabaseClient
     .from("users")
     .select("telegram_id")
@@ -184,7 +190,6 @@ async function saveUser(updatedUser) {
     return;
   }
 
-  // обновляем текущего пользователя
   const { error } = await supabaseClient
     .from("users")
     .update(updatedUser)
@@ -314,10 +319,10 @@ themeToggle.addEventListener("click", () => {
    INIT
 ========================= */
 (async () => {
-  user = await loadUser(); // ждём, пока Supabase вернёт пользователя
-  if (!user) return;       // если что-то пошло не так — выходим
+  user = await loadUser();
+  if (!user) return;
 
-  updateHeader();           // теперь можно безопасно обновлять шапку
-  render("home");           // рендерим главный экран
+  updateHeader();
+  render("home");
   navButtons[0].classList.add("active");
 })();
