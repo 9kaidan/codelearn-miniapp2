@@ -4,14 +4,11 @@ const themeToggle = document.getElementById("themeToggle");
 
 let currentPage = "home";
 let currentLanguage = null;
+let user = null;
 
 /* =========================
    UTILS
 ========================= */
-
-let user = null;
-
-
 
 function setActive(btn) {
   navButtons.forEach(b => b.classList.remove("active"));
@@ -29,21 +26,20 @@ function animatePage() {
 ========================= */
 
 function renderHome() {
-  if (!user) return; // добавляем это в начале функции
+  if (!user) return;
 
   const progressPercent = Math.min(100, (user.xp / 200) * 100);
   const remainingXP = 200 - (user.xp % 200);
 
   content.innerHTML = `
     <h2>Главная</h2>
-    <!-- Продолжить обучение -->
+
     <div class="card">
       <h3>🚀 Продолжить обучение</h3>
       <p>${user.current_course} • ${user.current_lesson}</p>
       <button class="primary-btn" id="continueBtn">Продолжить</button>
     </div>
 
-    <!-- XP / Level -->
     <div class="card">
       <h3>📊 Уровень ${user.level}</h3>
       <p>До следующего уровня осталось ${remainingXP} XP</p>
@@ -52,7 +48,6 @@ function renderHome() {
       </div>
     </div>
 
-    <!-- Статистика дня -->
     <div class="card">
       <h3>📈 Статистика дня</h3>
       <p>🔥 Стрик: ${user.streak} дней</p>
@@ -139,26 +134,29 @@ function renderProfile() {
   });
 }
 
+/* =========================
+   SUPABASE USER LOGIC
+========================= */
+
 async function loadUser() {
   const telegramID = window.TELEGRAM_USER_ID;
-  if (!telegramID) {
-    alert("Нет Telegram ID");
-    return null;
-  }
+  console.log("Loading user for Telegram ID:", telegramID);
 
-  // Ищем пользователя в Supabase
-  const { data } = await supabaseClient
+  if (!telegramID) return null;
+
+  const { data, error } = await supabaseClient
     .from("users")
     .select("*")
     .eq("telegram_id", telegramID)
     .maybeSingle();
 
-  if (data) return data; // найден — возвращаем
+  console.log("Supabase returned:", data, error);
 
-  // Если не найден — создаём нового
+  if (data) return data;
+
   const newUser = {
     telegram_id: telegramID,
-    username: `User${telegramID}`, // можно придумать дефолтное имя
+    username: `User${telegramID}`,
     xp: 0,
     level: 1,
     streak: 0,
@@ -168,12 +166,8 @@ async function loadUser() {
     avatar: "👨‍💻"
   };
 
-  const { error } = await supabaseClient.from("users").insert([newUser]);
-  if (error) {
-    alert("Ошибка создания пользователя в базе");
-    return null;
-  }
-
+  const { error: insertError } = await supabaseClient.from("users").insert([newUser]);
+  console.log("Insert result:", insertError);
   return newUser;
 }
 
@@ -204,13 +198,9 @@ async function saveUser(updatedUser) {
   }
 }
 
-function xpToNextLevel() {
-  return user.level * 100;
-}
-
-function currentLevelProgress() {
-  return (user.xp % xpToNextLevel()) / xpToNextLevel() * 100;
-}
+/* =========================
+   HEADER
+========================= */
 
 function updateHeader() {
   if (!user) return;
@@ -219,7 +209,6 @@ function updateHeader() {
   document.querySelector(".level").innerText = `Level ${user.level} • ${user.xp} XP`;
 
   const avatar = document.querySelector(".avatar");
-
   if (user.avatar && user.avatar.startsWith("data:image")) {
     avatar.innerHTML = `<img src="${user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
   } else {
@@ -234,16 +223,8 @@ function updateHeader() {
 function renderLanguageMenu() {
   if (!user || !currentLanguage) return;
 
-  const langTitle = {
-    python: "Python",
-    cpp: "C++",
-    csharp: "C#",
-    dart: "Dart"
-  };
-
   content.innerHTML = `
     <button id="backBtn" class="back-btn">← Назад</button>
-
     <div class="card" data-mode="theory">📘 Теория</div>
     <div class="card" data-mode="quiz">🧠 Викторина</div>
     <div class="card" data-mode="practice">💻 Практика</div>
@@ -315,9 +296,6 @@ themeToggle.addEventListener("click", () => {
    INIT
 ========================= */
 
-/* =========================
-   INIT
-========================= */
 (async () => {
   user = await loadUser();
   if (!user) return;
