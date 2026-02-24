@@ -35,6 +35,31 @@
 
 </div>
 
+<!-- 1. Supabase библиотека -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- 2. Инициализация Supabase -->
+<script>
+  const SUPABASE_URL = "https://tqxlvczendomdhtfxymz.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_6Z40NqEsZ2h7KVzvkJJjjQ_yd1271ET";
+
+  window.supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+</script>
+
+<!-- 3. Безопасное подключение Telegram -->
+<script>
+  if (window.Telegram && Telegram.WebApp) {
+    Telegram.WebApp.ready();
+    const tgUser = Telegram.WebApp.initDataUnsafe.user;
+    window.TELEGRAM_USER_ID = tgUser?.id || null;
+  } else {
+    // режим теста если открыт в браузере
+    window.TELEGRAM_USER_ID = 111111;
+  }
+</script>
+
+<!-- 4. Подключаем app.js ОДИН РАЗ и В САМОМ КОНЦЕ -->
 <script type="module" src="js/app.js"></script>
+
 </body>
 </html>
