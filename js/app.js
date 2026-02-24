@@ -29,12 +29,13 @@ function animatePage() {
 ========================= */
 
 function renderHome() {
-  const progressPercent = Math.min(100, (user.xp / 200) * 100); // пример прогресса
+  if (!user) return; // добавляем это в начале функции
+
+  const progressPercent = Math.min(100, (user.xp / 200) * 100);
   const remainingXP = 200 - (user.xp % 200);
 
   content.innerHTML = `
     <h2>Главная</h2>
-
     <!-- Продолжить обучение -->
     <div class="card">
       <h3>🚀 Продолжить обучение</h3>
@@ -60,18 +61,18 @@ function renderHome() {
     </div>
   `;
 
-  // Анимация прогресса
   setTimeout(() => {
     document.getElementById("progressFill").style.width = `${progressPercent}%`;
   }, 100);
 
-  // Событие кнопки продолжения обучения
   document.getElementById("continueBtn").addEventListener("click", () => {
     renderLanguageMenu();
   });
 }
 
 function renderLearn() {
+  if (!user) return;
+
   content.innerHTML = `
     <h2>Выбери язык</h2>
     <div class="language-card" data-lang="python">🐍 Python</div>
@@ -97,17 +98,19 @@ function renderProgress() {
 }
 
 function renderProfile() {
+  if (!user) return;
+
   content.innerHTML = `
     <h2>Редактор профиля</h2>
 
     <div class="profile-card">
       <label>Никнейм</label>
-      <input type="text" id="nameInput" value="${user.username}" />
+      <input type="text" id="nameInput" value="${user.username}" class="styled-input"/>
     </div>
 
     <div class="profile-card">
       <label>Выбрать аватар</label>
-      <input type="file" id="avatarInput" accept="image/*" />
+      <input type="file" id="avatarInput" accept="image/*" class="styled-input"/>
     </div>
 
     <div class="profile-card">
@@ -115,27 +118,25 @@ function renderProfile() {
     </div>
   `;
 
-document.getElementById("saveProfile").addEventListener("click", async () => {
-  const newName = document.getElementById("nameInput").value;
-  const avatarFile = document.getElementById("avatarInput").files[0];
+  document.getElementById("saveProfile").addEventListener("click", async () => {
+    const newName = document.getElementById("nameInput").value.trim();
+    const avatarFile = document.getElementById("avatarInput").files[0];
 
-  let updatedUser = { ...user };
+    let updatedUser = { ...user };
 
-  if (newName.trim() !== "") {
-    updatedUser.username = newName;
-  }
+    if (newName !== "") updatedUser.username = newName;
 
-  if (avatarFile) {
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      updatedUser.avatar = e.target.result;
+    if (avatarFile) {
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        updatedUser.avatar = e.target.result;
+        await saveUser(updatedUser);
+      };
+      reader.readAsDataURL(avatarFile);
+    } else {
       await saveUser(updatedUser);
-    };
-    reader.readAsDataURL(avatarFile);
-  } else {
-    await saveUser(updatedUser);
-  }
-});
+    }
+  });
 }
 
 async function loadUser() {
@@ -171,18 +172,19 @@ async function loadUser() {
 }
 
 async function saveUser(updatedUser) {
-
-const { data: existing } = await supabaseClient
-  .from("users")
-  .select("telegram_id")
-  .eq("username", updatedUser.username)
-  .maybeSingle();
+  // проверяем, не занят ли ник другим пользователем
+  const { data: existing } = await supabaseClient
+    .from("users")
+    .select("telegram_id")
+    .eq("username", updatedUser.username)
+    .maybeSingle();
 
   if (existing && existing.telegram_id !== updatedUser.telegram_id) {
     alert("Ник уже занят ❌");
     return;
   }
 
+  // обновляем текущего пользователя
   const { error } = await supabaseClient
     .from("users")
     .update(updatedUser)
@@ -208,17 +210,13 @@ function currentLevelProgress() {
 function updateHeader() {
   if (!user) return;
 
-  document.querySelector(".username").innerText =
-    `Привет, ${user.username}`;
-
-  document.querySelector(".level").innerText =
-    `Level ${user.level} • ${user.xp} XP`;
+  document.querySelector(".username").innerText = `Привет, ${user.username}`;
+  document.querySelector(".level").innerText = `Level ${user.level} • ${user.xp} XP`;
 
   const avatar = document.querySelector(".avatar");
 
   if (user.avatar && user.avatar.startsWith("data:image")) {
-    avatar.innerHTML =
-      `<img src="${user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    avatar.innerHTML = `<img src="${user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
   } else {
     avatar.innerText = user.avatar || "👨‍💻";
   }
@@ -229,6 +227,8 @@ function updateHeader() {
 ========================= */
 
 function renderLanguageMenu() {
+  if (!user || !currentLanguage) return;
+
   const langTitle = {
     python: "Python",
     cpp: "C++",
@@ -237,9 +237,7 @@ function renderLanguageMenu() {
   };
 
   content.innerHTML = `
-<button id="backBtn" class="back-btn">
-  ← Назад
-</button>
+    <button id="backBtn" class="back-btn">← Назад</button>
 
     <div class="card" data-mode="theory">📘 Теория</div>
     <div class="card" data-mode="quiz">🧠 Викторина</div>
@@ -263,14 +261,14 @@ function renderLanguageMenu() {
 ========================= */
 
 function renderMode(mode) {
+  if (!user || !currentLanguage) return;
+
   content.innerHTML = `
-<button id="backBtn" class="back-btn">
-  ← Назад
-</button>
+    <button id="backBtn" class="back-btn">← Назад</button>
     <div class="card">
       Раздел "${mode}" для ${currentLanguage}
       <br><br>
-      (Тут будет твоя логика JSON)
+      (Здесь будет контент по JSON или урокам)
     </div>
   `;
 
@@ -312,11 +310,14 @@ themeToggle.addEventListener("click", () => {
    INIT
 ========================= */
 
+/* =========================
+   INIT
+========================= */
 (async () => {
-  user = await loadUser();
-  if (!user) return;
+  user = await loadUser(); // ждём, пока Supabase вернёт пользователя
+  if (!user) return;       // если что-то пошло не так — выходим
 
-  updateHeader();
-  render("home");
+  updateHeader();           // теперь можно безопасно обновлять шапку
+  render("home");           // рендерим главный экран
   navButtons[0].classList.add("active");
 })();
