@@ -53,8 +53,9 @@
     const tgUser = Telegram.WebApp.initDataUnsafe.user;
     window.TELEGRAM_USER_ID = tgUser?.id || null;
   } else {
-    // режим теста если открыт в браузере
-    window.TELEGRAM_USER_ID = 111111;
+    // Генерируем случайный ID для локалки, чтобы тестировать нескольких пользователей
+    window.TELEGRAM_USER_ID = Math.floor(Math.random() * 1000000) + 100000;
+    console.log("Тестовый локальный Telegram ID:", window.TELEGRAM_USER_ID);
   }
 </script>
 
