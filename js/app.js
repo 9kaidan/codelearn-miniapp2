@@ -60,10 +60,24 @@ function renderHome() {
     document.getElementById("progressFill").style.width = `${progressPercent}%`;
   }, 100);
 
-  document.getElementById("continueBtn").addEventListener("click", () => {
-    renderLanguageMenu();
-  });
-}
+document.getElementById("continueBtn").addEventListener("click", () => {
+
+  const reverseLangMap = {
+    "Python": "python",
+    "C++": "cpp",
+    "C#": "csharp",
+    "Dart": "dart"
+  };
+
+  currentLanguage = reverseLangMap[user.current_course];
+
+  if (!currentLanguage) {
+    renderLearn(); // если вдруг язык не выбран
+    return;
+  }
+
+  renderLanguageMenu();
+});
 
 function renderLearn() {
   if (!user) return;
@@ -76,13 +90,31 @@ function renderLearn() {
     <div class="language-card" data-lang="dart">🟣 Dart</div>
   `;
 
-  document.querySelectorAll(".language-card").forEach(card => {
-    card.addEventListener("click", () => {
-      currentLanguage = card.dataset.lang;
-      renderLanguageMenu();
-    });
+document.querySelectorAll(".language-card").forEach(card => {
+  card.addEventListener("click", async () => {
+    currentLanguage = card.dataset.lang;
+
+    const langMap = {
+      python: "Python",
+      cpp: "C++",
+      csharp: "C#",
+      dart: "Dart"
+    };
+
+    user.current_course = langMap[currentLanguage];
+    user.current_lesson = "Введение"; // можно потом сделать динамическим
+
+    await supabaseClient
+      .from("users")
+      .update({
+        current_course: user.current_course,
+        current_lesson: user.current_lesson
+      })
+      .eq("telegram_id", user.telegram_id);
+
+    renderLanguageMenu();
   });
-}
+});
 
 function renderProgress() {
   content.innerHTML = `
@@ -311,3 +343,4 @@ themeToggle.addEventListener("click", () => {
   render("home");
   navButtons[0].classList.add("active");
 })();
+
