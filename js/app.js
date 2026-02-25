@@ -115,7 +115,7 @@ document.querySelectorAll(".language-card").forEach(card => {
     renderLanguageMenu();
   });
 });
-
+}
 function renderProgress() {
   content.innerHTML = `
     <h2>Твой прогресс</h2>
