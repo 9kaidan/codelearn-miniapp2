@@ -35,7 +35,7 @@
 
 </div>
 
-<!-- 1. Supabase библиотека -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <!-- 2. Инициализация Supabase -->
@@ -48,15 +48,22 @@
 
 <!-- 3. Безопасное подключение Telegram -->
 <script>
-  if (window.Telegram && Telegram.WebApp) {
-    Telegram.WebApp.ready();
-    const tgUser = Telegram.WebApp.initDataUnsafe.user;
-    window.TELEGRAM_USER_ID = tgUser?.id || null;
-  } else {
-    // Генерируем случайный ID для локалки, чтобы тестировать нескольких пользователей
-    window.TELEGRAM_USER_ID = Math.floor(Math.random() * 1000000) + 100000;
-    console.log("Тестовый локальный Telegram ID:", window.TELEGRAM_USER_ID);
+  if (!window.Telegram || !Telegram.WebApp) {
+    document.body.innerHTML = "<h2>Открой приложение через Telegram</h2>";
+    throw new Error("Not opened inside Telegram");
   }
+
+  Telegram.WebApp.ready();
+
+  const tgUser = Telegram.WebApp.initDataUnsafe?.user;
+
+  if (!tgUser?.id) {
+    document.body.innerHTML = "<h2>Не удалось получить Telegram ID</h2>";
+    throw new Error("Telegram ID not found");
+  }
+
+  window.TELEGRAM_USER_ID = tgUser.id;
+  window.TELEGRAM_USERNAME = tgUser.username || "Developer";
 </script>
 
 <!-- 4. Подключаем app.js ОДИН РАЗ и В САМОМ КОНЦЕ -->
