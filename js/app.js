@@ -78,7 +78,7 @@ document.getElementById("continueBtn").addEventListener("click", () => {
 
   renderLanguageMenu();
 });
-
+}
 function renderLearn() {
   if (!user) return;
 
@@ -343,4 +343,5 @@ themeToggle.addEventListener("click", () => {
   render("home");
   navButtons[0].classList.add("active");
 })();
+
 
