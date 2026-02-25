@@ -140,9 +140,6 @@ function renderProfile() {
 
 async function loadUser() {
   const telegramID = window.TELEGRAM_USER_ID;
-  console.log("Loading user for Telegram ID:", telegramID);
-
-  if (!telegramID) return null;
 
   const { data, error } = await supabaseClient
     .from("users")
@@ -150,13 +147,16 @@ async function loadUser() {
     .eq("telegram_id", telegramID)
     .maybeSingle();
 
-  console.log("Supabase returned:", data, error);
+  if (error) {
+    console.error(error);
+    return null;
+  }
 
   if (data) return data;
 
   const newUser = {
     telegram_id: telegramID,
-    username: `User${telegramID}`,
+    username: window.TELEGRAM_USERNAME,
     xp: 0,
     level: 1,
     streak: 0,
@@ -166,8 +166,15 @@ async function loadUser() {
     avatar: "👨‍💻"
   };
 
-  const { error: insertError } = await supabaseClient.from("users").insert([newUser]);
-  console.log("Insert result:", insertError);
+  const { error: insertError } = await supabaseClient
+    .from("users")
+    .insert([newUser]);
+
+  if (insertError) {
+    console.error(insertError);
+    return null;
+  }
+
   return newUser;
 }
 
