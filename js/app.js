@@ -1,3 +1,5 @@
+import { lessons } from "./lessons.js";
+
 const content = document.getElementById("content");
 const navButtons = document.querySelectorAll(".bottom-nav button");
 const themeToggle = document.getElementById("themeToggle");
@@ -22,7 +24,7 @@ function animatePage() {
 }
 
 /* =========================
-   PAGES
+   HOME
 ========================= */
 
 function renderHome() {
@@ -36,7 +38,7 @@ function renderHome() {
 
     <div class="card">
       <h3>🚀 Продолжить обучение</h3>
-      <p>${user.current_course} • ${user.current_lesson}</p>
+      <p>${user.current_course} • Урок ${user.current_lesson_id}</p>
       <button class="primary-btn" id="continueBtn">Продолжить</button>
     </div>
 
@@ -52,7 +54,6 @@ function renderHome() {
       <h3>📈 Статистика дня</h3>
       <p>🔥 Стрик: ${user.streak} дней</p>
       <p>⚡ XP сегодня: +${user.today_xp}</p>
-      <p>🎯 Челлендж выполнен: —</p>
     </div>
   `;
 
@@ -60,276 +61,160 @@ function renderHome() {
     document.getElementById("progressFill").style.width = `${progressPercent}%`;
   }, 100);
 
-document.getElementById("continueBtn").addEventListener("click", () => {
+  document.getElementById("continueBtn").addEventListener("click", () => {
 
-  const reverseLangMap = {
-    "Python": "python",
-    "C++": "cpp",
-    "C#": "csharp",
-    "Dart": "dart"
-  };
+    const reverseLangMap = {
+      "Python": "python",
+      "C++": "cpp",
+      "C#": "csharp",
+      "Dart": "dart"
+    };
 
-  currentLanguage = reverseLangMap[user.current_course];
+    currentLanguage = reverseLangMap[user.current_course];
 
-  if (!currentLanguage) {
-    renderLearn(); // если вдруг язык не выбран
-    return;
-  }
+    if (!currentLanguage) {
+      renderLearn();
+      return;
+    }
 
-  renderLanguageMenu();
-});
+    renderCurrentLesson();
+  });
 }
+
+/* =========================
+   LANGUAGE SELECT
+========================= */
+
 function renderLearn() {
   if (!user) return;
 
   content.innerHTML = `
     <h2>Выбери язык</h2>
     <div class="language-card" data-lang="python">🐍 Python</div>
-    <div class="language-card" data-lang="cpp">💙 C++</div>
-    <div class="language-card" data-lang="csharp">🎯 C#</div>
-    <div class="language-card" data-lang="dart">🟣 Dart</div>
   `;
 
-document.querySelectorAll(".language-card").forEach(card => {
-  card.addEventListener("click", async () => {
-    currentLanguage = card.dataset.lang;
+  document.querySelectorAll(".language-card").forEach(card => {
+    card.addEventListener("click", async () => {
 
-    const langMap = {
-      python: "Python",
-      cpp: "C++",
-      csharp: "C#",
-      dart: "Dart"
-    };
+      currentLanguage = card.dataset.lang;
 
-    user.current_course = langMap[currentLanguage];
-    user.current_lesson = "Введение"; // можно потом сделать динамическим
+      user.current_course = "Python";
+      user.current_language = "python";
+      user.current_lesson_id = 1;
+      user.completed_lessons = [];
 
-    await supabaseClient
-      .from("users")
-      .update({
-        current_course: user.current_course,
-        current_lesson: user.current_lesson
-      })
-      .eq("telegram_id", user.telegram_id);
+      await supabaseClient
+        .from("users")
+        .update({
+          current_course: user.current_course,
+          current_language: user.current_language,
+          current_lesson_id: user.current_lesson_id,
+          completed_lessons: user.completed_lessons
+        })
+        .eq("telegram_id", user.telegram_id);
 
-    renderLanguageMenu();
-  });
-});
-}
-function renderProgress() {
-  content.innerHTML = `
-    <h2>Твой прогресс</h2>
-    <div class="card">Python — 65%</div>
-    <div class="card">C++ — 20%</div>
-  `;
-}
-
-function renderProfile() {
-  if (!user) return;
-
-  content.innerHTML = `
-    <h2>Редактор профиля</h2>
-
-    <div class="profile-card">
-      <label>Никнейм</label>
-      <input type="text" id="nameInput" value="${user.username}" class="styled-input"/>
-    </div>
-
-    <div class="profile-card">
-      <label>Выбрать аватар</label>
-      <input type="file" id="avatarInput" accept="image/*" class="styled-input"/>
-    </div>
-
-    <div class="profile-card">
-      <button id="saveProfile" class="primary-btn">Сохранить изменения</button>
-    </div>
-  `;
-
-  document.getElementById("saveProfile").addEventListener("click", async () => {
-    const newName = document.getElementById("nameInput").value.trim();
-    const avatarFile = document.getElementById("avatarInput").files[0];
-
-    let updatedUser = { ...user };
-
-    if (newName !== "") updatedUser.username = newName;
-
-    if (avatarFile) {
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        updatedUser.avatar = e.target.result;
-        await saveUser(updatedUser);
-      };
-      reader.readAsDataURL(avatarFile);
-    } else {
-      await saveUser(updatedUser);
-    }
-  });
-}
-
-/* =========================
-   SUPABASE USER LOGIC
-========================= */
-
-async function loadUser() {
-  const telegramID = window.TELEGRAM_USER_ID;
-
-  const { data, error } = await supabaseClient
-    .from("users")
-    .select("*")
-    .eq("telegram_id", telegramID)
-    .maybeSingle();
-
-  if (error) {
-    console.error(error);
-    return null;
-  }
-
-  if (data) return data;
-
-  const newUser = {
-    telegram_id: telegramID,
-    username: window.TELEGRAM_USERNAME,
-    xp: 0,
-    level: 1,
-    streak: 0,
-    today_xp: 0,
-    current_course: "Python",
-    current_lesson: "Введение",
-    avatar: "👨‍💻"
-  };
-
-  const { error: insertError } = await supabaseClient
-    .from("users")
-    .insert([newUser]);
-
-  if (insertError) {
-    console.error(insertError);
-    return null;
-  }
-
-  return newUser;
-}
-
-async function saveUser(updatedUser) {
-  // Проверка на уникальность ника
-  const { data: existing } = await supabaseClient
-    .from("users")
-    .select("telegram_id")
-    .eq("username", updatedUser.username)
-    .maybeSingle();
-
-  if (existing && existing.telegram_id !== updatedUser.telegram_id) {
-    alert("Ник уже занят ❌");
-    return;
-  }
-
-  const { error } = await supabaseClient
-    .from("users")
-    .update(updatedUser)
-    .eq("telegram_id", updatedUser.telegram_id);
-
-  if (error) {
-    alert("Ошибка сохранения");
-  } else {
-    user = updatedUser;
-    updateHeader();
-    alert("Профиль сохранён ✅");
-  }
-}
-
-/* =========================
-   HEADER
-========================= */
-
-function updateHeader() {
-  if (!user) return;
-
-  document.querySelector(".username").innerText = `Привет, ${user.username}`;
-  document.querySelector(".level").innerText = `Level ${user.level} • ${user.xp} XP`;
-
-  const avatar = document.querySelector(".avatar");
-  if (user.avatar && user.avatar.startsWith("data:image")) {
-    avatar.innerHTML = `<img src="${user.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-  } else {
-    avatar.innerText = user.avatar || "👨‍💻";
-  }
-}
-
-/* =========================
-   LANGUAGE MENU
-========================= */
-
-function renderLanguageMenu() {
-  if (!user || !currentLanguage) return;
-
-  content.innerHTML = `
-    <button id="backBtn" class="back-btn">← Назад</button>
-    <div class="card" data-mode="theory">📘 Теория</div>
-    <div class="card" data-mode="quiz">🧠 Викторина</div>
-    <div class="card" data-mode="practice">💻 Практика</div>
-    <div class="card" data-mode="challenge">🏆 Челлендж</div>
-  `;
-
-  document.getElementById("backBtn").addEventListener("click", () => {
-    renderLearn();
-  });
-
-  document.querySelectorAll(".card[data-mode]").forEach(card => {
-    card.addEventListener("click", () => {
-      renderMode(card.dataset.mode);
+      renderCurrentLesson();
     });
   });
 }
 
 /* =========================
-   MODE PAGES
+   LESSON SYSTEM
 ========================= */
 
-function renderMode(mode) {
-  if (!user || !currentLanguage) return;
+function renderCurrentLesson() {
+  const languageLessons = lessons[currentLanguage];
+  if (!languageLessons) return;
 
+  const lesson = languageLessons.find(
+    l => l.id === user.current_lesson_id
+  );
+
+  if (!lesson) {
+    content.innerHTML = `
+      <div class="card">🎉 Курс завершён!</div>
+    `;
+    return;
+  }
+
+  if (lesson.type === "theory") renderTheoryLesson(lesson);
+  if (lesson.type === "quiz") renderQuizLesson(lesson);
+}
+
+function renderTheoryLesson(lesson) {
   content.innerHTML = `
     <button id="backBtn" class="back-btn">← Назад</button>
     <div class="card">
-      Раздел "${mode}" для ${currentLanguage}
-      <br><br>
-      (Здесь будет контент по JSON или урокам)
+      <h3>${lesson.title}</h3>
+      <p>${lesson.content}</p>
+      <button id="completeLesson" class="primary-btn">
+        Завершить (+20 XP)
+      </button>
     </div>
   `;
 
-  document.getElementById("backBtn").addEventListener("click", () => {
-    renderLanguageMenu();
-  });
+  document.getElementById("completeLesson")
+    .addEventListener("click", async () => {
+      await completeLesson(lesson, 20);
+    });
+
+  document.getElementById("backBtn")
+    .addEventListener("click", renderHome);
 }
 
-/* =========================
-   MAIN ROUTER
-========================= */
+function renderQuizLesson(lesson) {
+  content.innerHTML = `
+    <button id="backBtn" class="back-btn">← Назад</button>
+    <div class="card">
+      <h3>${lesson.question}</h3>
+      ${lesson.options.map((opt, i) => `
+        <div class="quiz-option" data-index="${i}">
+          ${opt}
+        </div>
+      `).join("")}
+    </div>
+  `;
 
-function render(page) {
-  currentPage = page;
-  animatePage();
+  document.querySelectorAll(".quiz-option")
+    .forEach(option => {
+      option.addEventListener("click", async () => {
+        const selected = parseInt(option.dataset.index);
 
-  if (page === "home") renderHome();
-  if (page === "learn") renderLearn();
-  if (page === "progress") renderProgress();
-  if (page === "profile") renderProfile();
+        if (selected === lesson.correct) {
+          await completeLesson(lesson, 30);
+        } else {
+          alert("Неправильно 😅");
+        }
+      });
+    });
+
+  document.getElementById("backBtn")
+    .addEventListener("click", renderHome);
 }
 
-/* =========================
-   EVENTS
-========================= */
+async function completeLesson(lesson, xpReward) {
 
-navButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    setActive(btn);
-    render(btn.dataset.page);
-  });
-});
+  if (!user.completed_lessons) {
+    user.completed_lessons = [];
+  }
 
-themeToggle.addEventListener("click", () => {
-  document.body.classList.toggle("light");
-});
+  user.completed_lessons.push(lesson.id);
+  user.current_lesson_id++;
+  user.xp += xpReward;
+  user.today_xp += xpReward;
+
+  await supabaseClient
+    .from("users")
+    .update({
+      xp: user.xp,
+      today_xp: user.today_xp,
+      current_lesson_id: user.current_lesson_id,
+      completed_lessons: user.completed_lessons
+    })
+    .eq("telegram_id", user.telegram_id);
+
+  renderHome();
+}
 
 /* =========================
    INIT
@@ -339,9 +224,12 @@ themeToggle.addEventListener("click", () => {
   user = await loadUser();
   if (!user) return;
 
+  if (!user.current_language) {
+    user.current_language = "python";
+    user.current_lesson_id = 1;
+    user.completed_lessons = [];
+  }
+
   updateHeader();
-  render("home");
-  navButtons[0].classList.add("active");
+  renderHome();
 })();
-
-
